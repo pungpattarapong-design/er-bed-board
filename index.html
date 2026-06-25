@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ER Bed Board</title>
+<style>
+:root {
+  --resus: #dc2626; --acute: #ea580c; --obs: #16a34a;
+  --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  display: flex; flex-direction: column;
+}
+
+/* Header */
+header {
+  padding: 12px 20px; display: flex; justify-content: space-between;
+  align-items: center; border-bottom: 1px solid #334155;
+}
+header h1 { font-size: 1.2rem; font-weight: 600; }
+.server-status { font-size: 0.65rem; padding: 3px 8px; border-radius: 10px; display: flex; align-items: center; gap: 4px; }
+.server-status.online { background: #064e3b; color: #6ee7b7; }
+.server-status.offline { background: #450a0a; color: #fca5a5; }
+.server-dot { width: 6px; height: 6px; border-radius: 50%; }
+.server-dot.online { background: #6ee7b7; }
+.server-dot.offline { background: #fca5a5; }
+header .zone-legend { display: flex; gap: 12px; font-size: 0.75rem; }
+.zone-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.zone-dot.resus { background: var(--resus); }
+.zone-dot.acute { background: var(--acute); }
+.zone-dot.obs { background: var(--obs); }
+
+/* Main layout */
+main { display: flex; flex: 1; overflow: hidden; }
+
+/* Grid */
+.grid-section { flex: 1; padding: 20px; display: flex; align-items: center; justify-content: center; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  gap: 10px; width: 100%; max-width: 700px; aspect-ratio: 1; }
+
+/* Bed card */
+.bed {
+  background: var(--card); border-radius: 10px; border: 2px solid #334155;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px; cursor: pointer; transition: all 0.15s; position: relative;
+  min-height: 0; overflow: hidden; text-align: center;
+}
+.bed:hover { border-color: #64748b; transform: scale(1.02); }
+.bed.occupied { border-width: 3px; }
+.bed.zone-resus { border-color: var(--resus); }
+.bed.zone-acute { border-color: var(--acute); }
+.bed.zone-obs { border-color: var(--obs); }
+.bed .bed-label { font-size: 0.65rem; color: var(--muted); position: absolute; top: 6px; left: 8px; }
+.bed .patient-name { font-size: 0.9rem; font-weight: 700; line-height: 1.2; }
+.bed .patient-cc { font-size: 0.65rem; color: var(--muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bed .patient-time { font-size: 0.6rem; color: #f59e0b; margin-top: 4px; }
+.bed .empty-text { font-size: 0.7rem; color: #475569; }
+
+/* Detail panel */
+.panel {
+  width: 380px; background: #1e293b; border-left: 1px solid #334155;
+  padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+  transition: transform 0.2s;
+}
+.panel.hidden { display: none; }
+.panel-header { display: flex; justify-content: space-between; align-items: start; }
+.panel-header h2 { font-size: 1rem; }
+.panel-header button { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+.panel-section h3 { font-size: 0.7rem; text-transform: uppercase; color: var(--muted);
+  letter-spacing: 0.05em; margin-bottom: 6px; }
+.panel-section { background: #0f172a; border-radius: 8px; padding: 12px; }
+.info-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 3px 0; }
+.info-row .label { color: var(--muted); }
+
+/* Time trackers */
+.time-tracker { display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.75rem; padding: 4px 0; border-bottom: 1px solid #1e293b; }
+.time-tracker .elapsed { color: #f59e0b; font-variant-numeric: tabular-nums; }
+.time-warn { color: var(--resus) !important; }
+
+/* Buttons */
+.btn {
+  padding: 6px 14px; border-radius: 6px; border: none; font-size: 0.75rem;
+  font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #3b82f6; color: white; }
+.btn-danger { background: var(--resus); color: white; }
+.btn-outline { background: transparent; border: 1px solid #475569; color: var(--text); }
+.btn-sm { padding: 3px 8px; font-size: 0.65rem; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 100; align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--card); border-radius: 12px; padding: 24px; width: 90%; max-width: 420px;
+  max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+}
+.modal h2 { font-size: 1rem; }
+.modal input, .modal textarea, .modal select {
+  width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+  padding: 8px 10px; color: var(--text); font-size: 0.8rem; font-family: inherit;
+}
+.modal textarea { resize: vertical; min-height: 60px; }
+.modal label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-row { display: flex; gap: 8px; }
+.field-row > * { flex: 1; }
+
+/* Investigate list & add-item row */
+.item-list { display: flex; flex-direction: column; gap: 4px; }
+.item-row { display: flex; gap: 6px; align-items: center; font-size: 0.75rem; }
+.item-row span { flex: 1; }
+.item-row .time { color: var(--muted); font-size: 0.65rem; }
+.add-item-row { display: flex; gap: 6px; margin-top: 4px; }
+.add-item-row input { flex: 1; font-size: 0.7rem; padding: 4px 8px; }
+
+/* Export */
+.export-section { padding: 0 20px 12px; text-align: right; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px; background: #16a34a; color: white;
+  padding: 8px 16px; border-radius: 6px; font-size: 0.75rem; z-index: 200;
+  opacity: 0; transform: translateY(10px); transition: all 0.2s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  main { flex-direction: column; }
+  .panel { width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid #334155; }
+  .grid-section { padding: 10px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏥 ER Bed Board</h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="server-status offline" id="serverStatus"><span class="server-dot offline"></span> offline</span>
+    <div class="zone-legend">
+    <span><span class="zone-dot resus"></span>Resus</span>
+    <span><span class="zone-dot acute"></span>Acute</span>
+    <span><span class="zone-dot obs"></span>Obs</span>
+  </div>
+  </div>
+</header>
+
+<main>
+  <section class="grid-section"><div class="grid" id="grid"></div></section>
+  <aside class="panel hidden" id="panel"></aside>
+</main>
+
+<div class="export-section">
+  <button class="btn btn-outline btn-sm" onclick="exportData()">📥 Export Backup</button>
+  <button class="btn btn-outline btn-sm" onclick="importData()">📤 Import</button>
+  <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑️ Clear All</button>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>Register Patient — Bed <span id="addBedNum"></span></h2>
+    <div class="field-row">
+      <div class="field-group"><label>Name</label><input id="addName" placeholder="First Last"></div>
+      <div class="field-group"><label>Age</label><input id="addAge" type="number" placeholder="Age"></div>
+    </div>
+    <div class="field-group"><label>HN</label><input id="addHN" placeholder="Hospital Number"></div>
+    <div class="field-group"><label>Chief Complaint</label><input id="addCC" placeholder="e.g. Chest pain 2 hr"></div>
+    <div class="field-group"><label>History</label><textarea id="addHx" placeholder="Brief history & physical exam"></textarea></div>
+    <div class="btn-row" style="justify-content: flex-end;">
+      <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="registerPatient()">Register</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<script>
+// ====== Data ======
+const BEDS = [
+  { num: 1, zone: 'resus' }, { num: 2, zone: 'resus' }, { num: 3, zone: 'resus' },
+  { num: 4, zone: 'acute' }, { num: 5, zone: 'acute' }, { num: 6, zone: 'acute' },
+  { num: 7, zone: 'obs'   }, { num: 8, zone: 'obs'   }, { num: 9, zone: 'obs'   },
+];
+
+function loadPatients() {
+  try { return JSON.parse(localStorage.getItem('er-patients') || '[]'); }
+  catch { return []; }
+}
+function savePatients(patients) {
+  localStorage.setItem('er-patients', JSON.stringify(patients));
+  syncToServer();
+}
+let patients = loadPatients();
+let selectedBed = null;
+let addTargetBed = null;
+
+// ====== Server Sync ======
+const SERVER_URL = localStorage.getItem('er-server-url') || 'http://localhost:8765';
+let serverOnline = false;
+let lastServerHash = '';
+
+function setServerStatus(online) {
+  serverOnline = online;
+  const el = document.getElementById('serverStatus');
+  const dot = el.querySelector('.server-dot');
+  el.className = `server-status ${online ? 'online' : 'offline'}`;
+  dot.className = `server-dot ${online ? 'online' : 'offline'}`;
+  el.innerHTML = `<span class="server-dot ${online ? 'online' : 'offline'}"></span> ${online ? 'shared' : 'offline'}`;
+}
+
+async function syncFromServer() {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/patients`);
+    if (!res.ok) throw new Error('down');
+    const data = await res.json();
+    const hash = JSON.stringify(data);
+    if (hash !== lastServerHash) {
+      lastServerHash = hash;
+      patients = data;
+      savePatients(patients); // persist locally
+      renderAll();
+      console.log(`[sync] pulled ${data.length} patients from server`);
+    }
+    if (!serverOnline) setServerStatus(true);
+  } catch {
+    if (serverOnline) setServerStatus(false);
+  }
+}
+
+async function syncToServer() {
+  if (!serverOnline) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/api/patients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patients)
+    });
+    if (res.ok) {
+      lastServerHash = JSON.stringify(patients);
+      console.log(`[sync] pushed ${patients.length} patients to server`);
+    }
+  } catch { /* server unreachable — data still in localStorage */ }
+}
+
+// ====== Helpers ======
+function getPatient(bedNum) { return patients.find(p => p.bed === bedNum); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function now() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function elapsed(from) {
+  const diff = Math.floor((Date.now() - new Date(from).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+function isWarn(from) {
+  return Date.now() - new Date(from).getTime() > 60 * 60 * 1000; // 1 hour
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ====== Render ======
+function renderAll() {
+  renderGrid();
+  if (selectedBed !== null) renderPanel(selectedBed);
+}
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = BEDS.map(b => {
+    const p = getPatient(b.num);
+    const cls = p ? `occupied zone-${b.zone}` : `zone-${b.zone}`;
+    const name = p ? `<div class="patient-name">${esc(p.name)}</div>` : '';
+    const cc = p ? `<div class="patient-cc">${esc(p.chiefComplaint)}</div>` : '';
+    const time = p ? `<div class="patient-time">⏱ ${elapsed(p.registeredAt)}</div>` : '';
+    const empty = !p ? `<div class="empty-text">Empty</div>` : '';
+    return `<div class="bed ${cls}" onclick="clickBed(${b.num})">
+      <div class="bed-label">Bed ${b.num}</div>
+      ${name}${cc}${time}${empty}
+    </div>`;
+  }).join('');
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ====== Bed Click ======
+function clickBed(bedNum) {
+  const p = getPatient(bedNum);
+  if (p) {
+    selectedBed = bedNum;
+    renderPanel(bedNum);
+  } else {
+    addTargetBed = bedNum;
+    document.getElementById('addBedNum').textContent = bedNum;
+    clearAddForm();
+    document.getElementById('addModal').classList.add('show');
+  }
+}
+
+// ====== Detail Panel ======
+function renderPanel(bedNum) {
+  const p = getPatient(bedNum);
+  const panel = document.getElementById('panel');
+  if (!p) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="panel-header">
+      <h2>Bed ${p.bed} — ${esc(p.name)}, ${p.age}${p.age === 1 ? 'yr' : 'yrs'}</h2>
+      <button onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-section">
+      <h3>Info</h3>
+      <div class="info-row"><span class="label">HN</span><span>${esc(p.hn || '—')}</span></div>
+      <div class="info-row"><span class="label">Arrived</span><span>${p.registeredAt} (${elapsed(p.registeredAt)})</span></div>
+    </div>
+    <div class="panel-section">
+      <h3>Chief Complaint</h3>
+      <div style="font-size:0.85rem">${esc(p.chiefComplaint)}</div>
+    </div>
+    <div class="panel-section">
+      <h3>History & PE</h3>
+      <div style="font-size:0.8rem; white-space:pre-wrap">${esc(p.history || '—')}</div>
+    </div>
+    <div class="panel-section">
+      <h3>Investigations</h3>
+      <div class="item-list">
+        ${(p.investigations || []).map((ix, i) => `
+          <div class="time-tracker">
+            <span>🔬 ${esc(ix.name)}</span>
+            <span class="elapsed ${isWarn(ix.orderedAt) ? 'time-warn' : ''}">⏱ ${elapsed(ix.orderedAt)}</span>
+            <button class="btn btn-outline btn-sm" onclick="markIxDone('${p.id}',${i})">${ix.resultAt ? '✅' : 'Done'}</button>
+          </div>`).join('')}
+      </div>
+      <div class="add-item-row">
+        <input id="newIx" placeholder="Add investigation...">
+        <button class="btn btn-primary btn-sm" onclick="addIx('${p.id}')">+</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Medications</h3>
+      <div class="item-list">
+        ${(p.medications || []).map((rx, i) => `
+          <div class="item-row">
+            <span>💊 ${esc(rx.drug)} ${esc(rx.dose)}</span>
+            <span class="time">${rx.givenAt}</span>
+            <button class="btn btn-outline btn-sm" onclick="removeRx('${p.id}',${i})">✕</button>
+          </div>`).join('')}
+      </div>
+      <div class="add-item-row">
+        <input id="newRxDrug" placeholder="Drug" style="flex:1.5">
+        <input id="newRxDose" placeholder="Dose" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="addRx('${p.id}')">+</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Timeline</h3>
+      ${renderTimeline(p)}
+      <div class="add-item-row">
+        <input id="newEvent" placeholder="Add event...">
+        <button class="btn btn-primary btn-sm" onclick="addTimeline('${p.id}')">+</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-danger btn-sm" onclick="transferPatient('${p.id}')">🚚 Transfer</button>
+      <button class="btn btn-danger btn-sm" onclick="dischargePatient('${p.id}')">🏠 Discharge</button>
+    </div>
+  `;
+}
+function renderTimeline(p) {
+  const events = [...(p.timeline || [])].sort((a,b) => new Date(b.time) - new Date(a.time));
+  return events.map(e => `
+    <div class="info-row">
+      <span style="font-size:0.7rem;color:var(--muted)">${e.time}</span>
+      <span style="font-size:0.75rem">${esc(e.event)}</span>
+    </div>
+  `).join('');
+}
+function closePanel() { selectedBed = null; document.getElementById('panel').classList.add('hidden'); }
+
+// ====== Actions ======
+function registerPatient() {
+  const p = {
+    id: uid(),
+    bed: addTargetBed,
+    name: document.getElementById('addName').value.trim(),
+    age: parseInt(document.getElementById('addAge').value) || 0,
+    hn: document.getElementById('addHN').value.trim(),
+    chiefComplaint: document.getElementById('addCC').value.trim(),
+    history: document.getElementById('addHx').value.trim(),
+    investigations: [],
+    medications: [],
+    timeline: [{ time: now(), event: 'Patient registered to Bed ' + addTargetBed }],
+    registeredAt: now(),
+  };
+  if (!p.name || !p.chiefComplaint) { showToast('Name and Chief Complaint required'); return; }
+  patients.push(p);
+  savePatients(patients);
+  closeAddModal();
+  selectedBed = p.bed;
+  renderAll();
+  showToast(`${p.name} registered to Bed ${p.bed}`);
+}
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('show');
+  addTargetBed = null;
+}
+function clearAddForm() {
+  ['addName','addAge','addHN','addCC','addHx'].forEach(id => document.getElementById(id).value = '');
+}
+
+function addIx(patientId) {
+  const input = document.getElementById('newIx');
+  const name = input.value.trim();
+  if (!name) return;
+  const p = patients.find(p => p.id === patientId);
+  if (!p) return;
+  p.investigations.push({ name, orderedAt: now(), resultAt: null });
+  p.timeline.push({ time: now(), event: `Investigation ordered: ${name}` });
+  savePatients(patients); renderPanel(p.bed); input.value = '';
+}
+function markIxDone(patientId, idx) {
+  const p = patients.find(p => p.id === patientId);
+  if (!p || !p.investigations[idx]) return;
+  p.investigations[idx].resultAt = now();
+  p.timeline.push({ time: now(), event: `Result: ${p.investigations[idx].name}` });
+  savePatients(patients); renderPanel(p.bed);
+}
+function addRx(patientId) {
+  const drug = document.getElementById('newRxDrug').value.trim();
+  const dose = document.getElementById('newRxDose').value.trim();
+  if (!drug) return;
+  const p = patients.find(p => p.id === patientId);
+  if (!p) return;
+  p.medications.push({ drug, dose, givenAt: now() });
+  p.timeline.push({ time: now(), event: `Medication: ${drug} ${dose}` });
+  savePatients(patients); renderPanel(p.bed);
+  document.getElementById('newRxDrug').value = '';
+  document.getElementById('newRxDose').value = '';
+}
+function removeRx(patientId, idx) {
+  const p = patients.find(p => p.id === patientId);
+  if (!p) return;
+  p.medications.splice(idx, 1);
+  savePatients(patients); renderPanel(p.bed);
+}
+function addTimeline(patientId) {
+  const input = document.getElementById('newEvent');
+  const event = input.value.trim();
+  if (!event) return;
+  const p = patients.find(p => p.id === patientId);
+  if (!p) return;
+  p.timeline.push({ time: now(), event });
+  savePatients(patients); renderPanel(p.bed); input.value = '';
+}
+function transferPatient(patientId) {
+  const newBed = prompt('Transfer to bed number (1-9):');
+  const bedNum = parseInt(newBed);
+  if (!bedNum || bedNum < 1 || bedNum > 9) return;
+  if (getPatient(bedNum)) { showToast('Bed ' + bedNum + ' is occupied'); return; }
+  const p = patients.find(p => p.id === patientId);
+  if (!p) return;
+  const oldBed = p.bed;
+  p.bed = bedNum;
+  p.timeline.push({ time: now(), event: `Transferred from Bed ${oldBed} to Bed ${bedNum}` });
+  savePatients(patients);
+  selectedBed = bedNum;
+  renderAll();
+  showToast(`Transferred to Bed ${bedNum}`);
+}
+function dischargePatient(patientId) {
+  if (!confirm('Discharge this patient?')) return;
+  patients = patients.filter(p => p.id !== patientId);
+  savePatients(patients);
+  closePanel();
+  renderGrid();
+  showToast('Patient discharged');
+}
+
+// ====== Export / Import / Clear ======
+function exportData() {
+  const blob = new Blob([JSON.stringify(patients, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `er-bed-board-${now().replace(/[: ]/g, '-')}.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+function importData() { document.getElementById('importFile').click(); }
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      patients = data;
+      savePatients(patients);
+      closePanel(); renderGrid();
+      showToast(`Imported ${data.length} patients`);
+    } catch { showToast('Invalid file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+function clearAll() {
+  if (!confirm('Delete ALL patient data? This cannot be undone.')) return;
+  patients = [];
+  savePatients(patients);
+  closePanel(); renderGrid();
+  showToast('All data cleared');
+}
+
+// ====== Boot ======
+renderGrid();
+syncFromServer(); // initial pull from server
+setInterval(syncFromServer, 3000); // poll every 3s
+</script>
+</body>
+</html>
