@@ -149,6 +149,7 @@ main { display: flex; flex: 1; overflow: hidden; }
   <h1>🏥 ER Bed Board</h1>
   <div style="display:flex;align-items:center;gap:8px">
     <span class="server-status offline" id="serverStatus"><span class="server-dot offline"></span> offline</span>
+    <button class="btn btn-outline btn-sm" onclick="openSettings()" title="Server URL">⚙️</button>
     <div class="zone-legend">
     <span><span class="zone-dot resus"></span>Resus</span>
     <span><span class="zone-dot acute"></span>Acute</span>
@@ -182,6 +183,24 @@ main { display: flex; flex: 1; overflow: hidden; }
     <div class="btn-row" style="justify-content: flex-end;">
       <button class="btn btn-outline" onclick="closeAddModal()">Cancel</button>
       <button class="btn btn-primary" onclick="registerPatient()">Register</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>⚙️ Server Settings</h2>
+    <div class="field-group">
+      <label>Server URL</label>
+      <input id="settingsUrl" placeholder="http://192.168.x.x:8765">
+      <small style="color:var(--muted);font-size:0.65rem">
+        Mac IP: 192.168.68.50:8765 &nbsp;|&nbsp; Same device: localhost:8765
+      </small>
+    </div>
+    <div class="btn-row" style="justify-content: flex-end;">
+      <button class="btn btn-outline" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
     </div>
   </div>
 </div>
@@ -539,6 +558,25 @@ function clearAll() {
 renderGrid();
 syncFromServer(); // initial pull from server
 setInterval(syncFromServer, 3000); // poll every 3s
+
+// ====== Settings ======
+function openSettings() {
+  document.getElementById('settingsUrl').value = localStorage.getItem('er-server-url') || 'http://localhost:8765';
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+function saveSettings() {
+  const url = document.getElementById('settingsUrl').value.trim();
+  if (!url) return;
+  localStorage.setItem('er-server-url', url);
+  closeSettings();
+  lastServerHash = ''; // reset hash to force re-sync
+  setServerStatus(false);
+  syncFromServer();
+  showToast('Connecting to ' + url + '...');
+}
 </script>
 </body>
 </html>
