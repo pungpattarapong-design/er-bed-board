@@ -16,33 +16,29 @@ body {
   display: flex; flex-direction: column;
 }
 
-/* Header */
 header {
   padding: 12px 20px; display: flex; justify-content: space-between;
   align-items: center; border-bottom: 1px solid #334155;
 }
 header h1 { font-size: 1.2rem; font-weight: 600; }
-.server-status { font-size: 0.65rem; padding: 3px 8px; border-radius: 10px; display: flex; align-items: center; gap: 4px; }
-.server-status.online { background: #064e3b; color: #6ee7b7; }
-.server-status.offline { background: #450a0a; color: #fca5a5; }
-.server-dot { width: 6px; height: 6px; border-radius: 50%; }
-.server-dot.online { background: #6ee7b7; }
-.server-dot.offline { background: #fca5a5; }
+.firebase-status { font-size: 0.65rem; padding: 3px 8px; border-radius: 10px; display: flex; align-items: center; gap: 4px; }
+.firebase-status.online { background: #064e3b; color: #6ee7b7; }
+.firebase-status.offline { background: #450a0a; color: #fca5a5; }
+.fb-dot { width: 6px; height: 6px; border-radius: 50%; }
+.fb-dot.online { background: #6ee7b7; }
+.fb-dot.offline { background: #fca5a5; }
 header .zone-legend { display: flex; gap: 12px; font-size: 0.75rem; }
 .zone-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 .zone-dot.resus { background: var(--resus); }
 .zone-dot.acute { background: var(--acute); }
 .zone-dot.obs { background: var(--obs); }
 
-/* Main layout */
 main { display: flex; flex: 1; overflow: hidden; }
 
-/* Grid */
 .grid-section { flex: 1; padding: 20px; display: flex; align-items: center; justify-content: center; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
   gap: 10px; width: 100%; max-width: 700px; aspect-ratio: 1; }
 
-/* Bed card */
 .bed {
   background: var(--card); border-radius: 10px; border: 2px solid #334155;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -61,7 +57,6 @@ main { display: flex; flex: 1; overflow: hidden; }
 .bed .patient-time { font-size: 0.6rem; color: #f59e0b; margin-top: 4px; }
 .bed .empty-text { font-size: 0.7rem; color: #475569; }
 
-/* Detail panel */
 .panel {
   width: 380px; background: #1e293b; border-left: 1px solid #334155;
   padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
@@ -77,13 +72,11 @@ main { display: flex; flex: 1; overflow: hidden; }
 .info-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 3px 0; }
 .info-row .label { color: var(--muted); }
 
-/* Time trackers */
 .time-tracker { display: flex; justify-content: space-between; align-items: center;
   font-size: 0.75rem; padding: 4px 0; border-bottom: 1px solid #1e293b; }
 .time-tracker .elapsed { color: #f59e0b; font-variant-numeric: tabular-nums; }
 .time-warn { color: var(--resus) !important; }
 
-/* Buttons */
 .btn {
   padding: 6px 14px; border-radius: 6px; border: none; font-size: 0.75rem;
   font-weight: 600; cursor: pointer; transition: opacity 0.15s;
@@ -95,7 +88,6 @@ main { display: flex; flex: 1; overflow: hidden; }
 .btn-sm { padding: 3px 8px; font-size: 0.65rem; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Modal */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
   z-index: 100; align-items: center; justify-content: center;
@@ -116,7 +108,6 @@ main { display: flex; flex: 1; overflow: hidden; }
 .field-row { display: flex; gap: 8px; }
 .field-row > * { flex: 1; }
 
-/* Investigate list & add-item row */
 .item-list { display: flex; flex-direction: column; gap: 4px; }
 .item-row { display: flex; gap: 6px; align-items: center; font-size: 0.75rem; }
 .item-row span { flex: 1; }
@@ -124,10 +115,8 @@ main { display: flex; flex: 1; overflow: hidden; }
 .add-item-row { display: flex; gap: 6px; margin-top: 4px; }
 .add-item-row input { flex: 1; font-size: 0.7rem; padding: 4px 8px; }
 
-/* Export */
 .export-section { padding: 0 20px 12px; text-align: right; }
 
-/* Toast */
 .toast {
   position: fixed; bottom: 20px; right: 20px; background: #16a34a; color: white;
   padding: 8px 16px; border-radius: 6px; font-size: 0.75rem; z-index: 200;
@@ -135,21 +124,38 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 
-/* Responsive */
 @media (max-width: 768px) {
   main { flex-direction: column; }
   .panel { width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid #334155; }
   .grid-section { padding: 10px; }
 }
 </style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+  import { getDatabase, ref, set, onValue, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js';
+
+  // ============ FIREBASE CONFIG — EDIT THESE ============
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+  };
+  // =====================================================
+
+  window._fb = { initializeApp, getDatabase, ref, set, onValue, serverTimestamp };
+</script>
+
 </head>
 <body>
 
 <header>
   <h1>🏥 ER Bed Board</h1>
   <div style="display:flex;align-items:center;gap:8px">
-    <span class="server-status offline" id="serverStatus"><span class="server-dot offline"></span> offline</span>
-    <button class="btn btn-outline btn-sm" onclick="openSettings()" title="Server URL">⚙️</button>
+    <span class="firebase-status offline" id="fbStatus"><span class="fb-dot offline"></span> offline</span>
+    <button class="btn btn-outline btn-sm" onclick="openFbConfig()" title="Firebase Config">⚙️</button>
     <div class="zone-legend">
     <span><span class="zone-dot resus"></span>Resus</span>
     <span><span class="zone-dot acute"></span>Acute</span>
@@ -187,20 +193,17 @@ main { display: flex; flex: 1; overflow: hidden; }
   </div>
 </div>
 
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
+<!-- Firebase Config Modal -->
+<div class="modal-overlay" id="fbConfigModal">
   <div class="modal">
-    <h2>⚙️ Server Settings</h2>
-    <div class="field-group">
-      <label>Server URL</label>
-      <input id="settingsUrl" placeholder="http://192.168.x.x:8765">
-      <small style="color:var(--muted);font-size:0.65rem">
-        Mac IP: 192.168.68.50:8765 &nbsp;|&nbsp; Same device: localhost:8765
-      </small>
-    </div>
+    <h2>⚙️ Firebase Config</h2>
+    <div class="field-group"><label>API Key</label><input id="fbApiKey" placeholder="AIza..."></div>
+    <div class="field-group"><label>Auth Domain</label><input id="fbAuthDomain" placeholder="project.firebaseapp.com"></div>
+    <div class="field-group"><label>Database URL</label><input id="fbDbUrl" placeholder="https://project-default-rtdb.firebaseio.com"></div>
+    <div class="field-group"><label>Project ID</label><input id="fbProjectId" placeholder="er-bed-board-xxxx"></div>
     <div class="btn-row" style="justify-content: flex-end;">
-      <button class="btn btn-outline" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
+      <button class="btn btn-outline" onclick="closeFbConfig()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFbConfig()">Connect</button>
     </div>
   </div>
 </div>
@@ -212,6 +215,96 @@ main { display: flex; flex: 1; overflow: hidden; }
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
 
 <script>
+// ====== Firebase ======
+let db = null;
+let fbRef = null;
+let fbOnline = false;
+
+function initFirebase(config) {
+  try {
+    const app = window._fb.initializeApp(config);
+    db = window._fb.getDatabase(app);
+    fbRef = window._fb.ref(db, 'patients');
+
+    // Listen for real-time updates
+    window._fb.onValue(fbRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && Array.isArray(data)) {
+        patients = data;
+        renderAll();
+        console.log(`[firebase] synced ${data.length} patients`);
+      } else if (data === null) {
+        // First time — write current patients
+        window._fb.set(fbRef, patients);
+      }
+    });
+
+    // Connection status
+    const connectedRef = window._fb.ref(db, '.info/connected');
+    window._fb.onValue(connectedRef, (snap) => {
+      fbOnline = snap.val() === true;
+      updateFbStatus();
+      if (fbOnline) {
+        // Push local data on connect
+        window._fb.set(fbRef, patients);
+      }
+    });
+
+    return true;
+  } catch (e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
+}
+
+function updateFbStatus() {
+  const el = document.getElementById('fbStatus');
+  const dot = el.querySelector('.fb-dot');
+  el.className = `firebase-status ${fbOnline ? 'online' : 'offline'}`;
+  dot.className = `fb-dot ${fbOnline ? 'online' : 'offline'}`;
+  el.innerHTML = `<span class="fb-dot ${fbOnline ? 'online' : 'offline'}"></span> ${fbOnline ? 'live' : 'offline'}`;
+}
+
+function saveToFirebase() {
+  if (fbRef && fbOnline) {
+    window._fb.set(fbRef, patients);
+  }
+}
+
+// ====== Config Persistence ======
+function openFbConfig() {
+  const saved = JSON.parse(localStorage.getItem('er-fb-config') || '{}');
+  document.getElementById('fbApiKey').value = saved.apiKey || '';
+  document.getElementById('fbAuthDomain').value = saved.authDomain || '';
+  document.getElementById('fbDbUrl').value = saved.databaseURL || '';
+  document.getElementById('fbProjectId').value = saved.projectId || '';
+  document.getElementById('fbConfigModal').classList.add('show');
+}
+
+function closeFbConfig() {
+  document.getElementById('fbConfigModal').classList.remove('show');
+}
+
+function saveFbConfig() {
+  const config = {
+    apiKey: document.getElementById('fbApiKey').value.trim(),
+    authDomain: document.getElementById('fbAuthDomain').value.trim(),
+    databaseURL: document.getElementById('fbDbUrl').value.trim(),
+    projectId: document.getElementById('fbProjectId').value.trim(),
+  };
+  if (!config.apiKey || !config.databaseURL) {
+    showToast('API Key and Database URL required');
+    return;
+  }
+  localStorage.setItem('er-fb-config', JSON.stringify(config));
+  closeFbConfig();
+  if (initFirebase(config)) {
+    showToast('Connected to Firebase!');
+  } else {
+    showToast('Connection failed — check config');
+  }
+}
+
 // ====== Data ======
 const BEDS = [
   { num: 1, zone: 'resus' }, { num: 2, zone: 'resus' }, { num: 3, zone: 'resus' },
@@ -225,59 +318,11 @@ function loadPatients() {
 }
 function savePatients(patients) {
   localStorage.setItem('er-patients', JSON.stringify(patients));
-  syncToServer();
+  saveToFirebase();
 }
 let patients = loadPatients();
 let selectedBed = null;
 let addTargetBed = null;
-
-// ====== Server Sync ======
-const SERVER_URL = localStorage.getItem('er-server-url') || 'http://localhost:8765';
-let serverOnline = false;
-let lastServerHash = '';
-
-function setServerStatus(online) {
-  serverOnline = online;
-  const el = document.getElementById('serverStatus');
-  const dot = el.querySelector('.server-dot');
-  el.className = `server-status ${online ? 'online' : 'offline'}`;
-  dot.className = `server-dot ${online ? 'online' : 'offline'}`;
-  el.innerHTML = `<span class="server-dot ${online ? 'online' : 'offline'}"></span> ${online ? 'shared' : 'offline'}`;
-}
-
-async function syncFromServer() {
-  try {
-    const res = await fetch(`${SERVER_URL}/api/patients`);
-    if (!res.ok) throw new Error('down');
-    const data = await res.json();
-    const hash = JSON.stringify(data);
-    if (hash !== lastServerHash) {
-      lastServerHash = hash;
-      patients = data;
-      savePatients(patients); // persist locally
-      renderAll();
-      console.log(`[sync] pulled ${data.length} patients from server`);
-    }
-    if (!serverOnline) setServerStatus(true);
-  } catch {
-    if (serverOnline) setServerStatus(false);
-  }
-}
-
-async function syncToServer() {
-  if (!serverOnline) return;
-  try {
-    const res = await fetch(`${SERVER_URL}/api/patients`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patients)
-    });
-    if (res.ok) {
-      lastServerHash = JSON.stringify(patients);
-      console.log(`[sync] pushed ${patients.length} patients to server`);
-    }
-  } catch { /* server unreachable — data still in localStorage */ }
-}
 
 // ====== Helpers ======
 function getPatient(bedNum) { return patients.find(p => p.bed === bedNum); }
@@ -296,7 +341,7 @@ function elapsed(from) {
   return `${Math.floor(h / 24)}d ago`;
 }
 function isWarn(from) {
-  return Date.now() - new Date(from).getTime() > 60 * 60 * 1000; // 1 hour
+  return Date.now() - new Date(from).getTime() > 60 * 60 * 1000;
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -325,7 +370,7 @@ function renderGrid() {
     </div>`;
   }).join('');
 }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
 
 // ====== Bed Click ======
 function clickBed(bedNum) {
@@ -556,26 +601,11 @@ function clearAll() {
 
 // ====== Boot ======
 renderGrid();
-syncFromServer(); // initial pull from server
-setInterval(syncFromServer, 3000); // poll every 3s
 
-// ====== Settings ======
-function openSettings() {
-  document.getElementById('settingsUrl').value = localStorage.getItem('er-server-url') || 'http://localhost:8765';
-  document.getElementById('settingsModal').classList.add('show');
-}
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('show');
-}
-function saveSettings() {
-  const url = document.getElementById('settingsUrl').value.trim();
-  if (!url) return;
-  localStorage.setItem('er-server-url', url);
-  closeSettings();
-  lastServerHash = ''; // reset hash to force re-sync
-  setServerStatus(false);
-  syncFromServer();
-  showToast('Connecting to ' + url + '...');
+// Try to auto-connect if config is saved
+const savedConfig = JSON.parse(localStorage.getItem('er-fb-config') || '{}');
+if (savedConfig.apiKey && savedConfig.apiKey !== 'YOUR_API_KEY') {
+  initFirebase(savedConfig);
 }
 </script>
 </body>
